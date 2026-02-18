@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "advanced-rag-backend"
+version = "0.1.0"
+description = "Advanced RAG Backend with FastAPI and LangGraph"
+authors = ["Aman <resoamankumar@gmail.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+# Updated to support your Python 3.12 version specifically
+python = "^3.11 || ^3.12"
+
+# Core Web Framework
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+
+# LangChain Ecosystem (Synchronized to 0.3.x for compatibility)
+# This fixes the StateGraph import error
+langchain = "^0.3.0"
+langgraph = "^0.2.0"
+langchain-core = "^0.3.0"
+langchain-openai = "^0.3.0"
+langchain-google-genai = "^2.0.0"
+langchain-qdrant = "^0.2.0"
+langchain-community = "^0.3.0"
+
+# Database & Auth
+psycopg2-binary = "^2.9.9"
+pydantic = {extras = ["email"], version = "^2.6.0"}
+python-dotenv = "^1.0.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+python-multipart = "^0.0.6"
+sqlalchemy = "^2.0.25"
+asyncpg = "^0.29.0"
+httpx = "^0.26.0"
+
+# Fixed version to prevent the 'bcrypt' attribute error in passlib
+bcrypt = "3.2.0"
+pypdf = "^6.7.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

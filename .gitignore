@@ -1,0 +1,58 @@
+# --- Frontend (Next.js / Node) ---
+node_modules/
+.next/
+out/
+build/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.expo/
+
+# --- Backend (Python / Poetry) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.python-version
+# poetry.lock is usually committed, but add it here if you want total ignore
+poetry.lock 
+
+# --- Environment & Secrets (CRITICAL) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+.env.*
+secrets.toml
+
+# --- Database & Vector Store ---
+.qdrant/
+chroma_db/
+*.db
+*.sqlite
+# If using a local Postgres data folder
+postgres_data/
+
+# --- LangChain / LangGraph ---
+.langgraph/
+.langchain_cache/
+# LangSmith trace exports
+langsmith_traces/
+
+# --- IDEs / Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Logs & Debugging ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+logs/

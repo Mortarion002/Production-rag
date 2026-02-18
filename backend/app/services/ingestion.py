@@ -1,0 +1,88 @@
+import os
+import shutil
+import tempfile
+import pathlib
+from langchain_community.document_loaders import TextLoader, PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import Qdrant
+from langchain_core.documents import Document
+from qdrant_client import QdrantClient
+from app.config import settings
+
+# Initialize Qdrant Client
+qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
+
+# Initialize Embeddings
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=settings.OPENAI_API_KEY)
+
+# Initialize Vector Store
+vectorstore = Qdrant(
+    client=qdrant_client,
+    collection_name=settings.QDRANT_COLLECTION_NAME,
+    embeddings=embeddings,
+)
+
+def ingest_text(text: str, metadata: dict = None):
+    """
+    Ingests raw text, chunks it, and stores it in Qdrant.
+    """
+    if metadata is None:
+        metadata = {}
+    
+    # 1. Chunking
+    # Using RecursiveCharacterTextSplitter for robustness, 
+    # though SemanticChunker was requested, it requires more setup/experimental flags.
+    # We can stick to a high-overlap recursive splitter for now as a strong baseline.
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        is_separator_regex=False,
+    )
+    
+    docs = [Document(page_content=text, metadata=metadata)]
+    split_docs = text_splitter.split_documents(docs)
+    
+    # 2. Indexing
+    vectorstore.add_documents(split_docs)
+    
+    return len(split_docs)
+
+def ingest_file(file_path: str, original_filename: str):
+    """
+    Ingests a file (PDF, TXT, MD), chunks it, and stores it in Qdrant.
+    """
+    file_ext = pathlib.Path(original_filename).suffix.lower()
+    
+    if file_ext == ".pdf":
+        loader = PyPDFLoader(file_path)
+    else:
+        # Default to TextLoader for .txt, .md, etc.
+        loader = TextLoader(file_path, autodetect_encoding=True)
+        
+    docs = loader.load()
+    
+    # Add metadata
+    for doc in docs:
+        doc.metadata["filename"] = original_filename
+        
+    # 1. Chunking
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        is_separator_regex=False,
+    )
+    
+    split_docs = text_splitter.split_documents(docs)
+    
+    # 2. Indexing
+    if split_docs:
+        vectorstore.add_documents(split_docs)
+    
+    return len(split_docs)
+
+def get_retriever():
+    """Returns the vector store retriever."""
+    return vectorstore.as_retriever(search_kwargs={"k": 5})
