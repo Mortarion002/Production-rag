@@ -1,6 +1,0 @@
-Test PDF content.
-This document contains information about the "Project Falcon".
-Project Falcon is a secret initiative to build a super-fast rocket.
-It is expected to launch in 2025.
-The budget for Project Falcon is 100 billion dollars.
-The lead engineer is Dr. Sarah Connor.
