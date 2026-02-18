@@ -11,14 +11,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Bypass public routes
-  if (pathname === "/login" || pathname === "/signup") {
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup") {
     if (token) {
-      // Optimistically verify, if valid, redirect to chat
+      // Optimistically verify, if valid, redirect to dashboard
       try {
         await jwtVerify(token, SECRET_KEY);
-        return NextResponse.redirect(new URL("/chat", request.url));
+        // If user is already logged in, redirect to dashboard
+        return NextResponse.redirect(new URL("/dashboard", request.url));
       } catch (e) {
-        // Invalid token, stay on login
+        // Invalid token, allow access to public routes (will likely need to login again)
       }
     }
     return NextResponse.next();
@@ -36,9 +37,8 @@ export async function middleware(request: NextRequest) {
     // 3. Role-based protection
     if (pathname.startsWith("/admin")) {
       if (role !== "admin") {
-        // Redirect unauthorized users to chat or 403
-        return NextResponse.rewrite(new URL("/403", request.url));
-        // Or redirect: return NextResponse.redirect(new URL('/chat', request.url))
+        // Redirect unauthorized users to dashboard
+        return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     }
 

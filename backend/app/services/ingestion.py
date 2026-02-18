@@ -11,7 +11,24 @@ from qdrant_client import QdrantClient
 from app.config import settings
 
 # Initialize Qdrant Client
+from qdrant_client.http import models as rest
+
+# ... (imports)
+
+# Initialize Qdrant Client
 qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
+
+# Ensure collection exists
+try:
+    qdrant_client.get_collection(settings.QDRANT_COLLECTION_NAME)
+except Exception:
+    qdrant_client.create_collection(
+        collection_name=settings.QDRANT_COLLECTION_NAME,
+        vectors_config=rest.VectorParams(
+            size=1536, # text-embedding-3-small dimension
+            distance=rest.Distance.COSINE,
+        ),
+    )
 
 # Initialize Embeddings
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=settings.OPENAI_API_KEY)
@@ -48,6 +65,12 @@ def ingest_text(text: str, metadata: dict = None):
     vectorstore.add_documents(split_docs)
     
     return len(split_docs)
+
+def get_retriever():
+    """
+    Returns the vector store retriever.
+    """
+    return vectorstore.as_retriever()
 
 def ingest_file(file_path: str, original_filename: str):
     """

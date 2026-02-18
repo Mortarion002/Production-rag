@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from "sonner"
 
@@ -14,6 +15,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('')
     const { login } = useAuth()
     const [loading, setLoading] = useState(false)
+    const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -21,6 +23,7 @@ export default function LoginPage() {
         try {
             await login(email, password)
             toast.success("Logged in successfully")
+            router.push('/dashboard')
         } catch (error) {
             toast.error("Login failed", { description: "Check your credentials" })
         } finally {

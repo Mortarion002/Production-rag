@@ -51,7 +51,15 @@ async def chat_endpoint(request: ChatRequest, current_user: models.User = Depend
     # To support "intermediate steps" on frontend, we should ideally use StreamingResponse with SSE.
     # For now, let's just return the final result.
     
-    final_state = graph_app.invoke(inputs, config=config)
+    # For now, let's just return the final result.
+    try:
+        final_state = graph_app.invoke(inputs, config=config)
+    except Exception as e:
+        import traceback
+        traceback_str = "".join(traceback.format_tb(e.__traceback__))
+        print(f"Error in chat endpoint: {e}")
+        print(traceback_str)
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)} Traceback: {traceback_str}")
     
     return {
         "answer": final_state.get("generation"),
@@ -93,7 +101,11 @@ async def ingest_file_endpoint(file: UploadFile = File(...), current_admin: mode
                 os.remove(tmp_path)
                 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback_str = "".join(traceback.format_tb(e.__traceback__))
+        print(f"Error processing file upload: {e}")
+        print(traceback_str)
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)} Traceback: {traceback_str}")
 
 if __name__ == "__main__":
     import uvicorn

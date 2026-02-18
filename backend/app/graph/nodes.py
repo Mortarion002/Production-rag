@@ -1,5 +1,6 @@
 from typing import Any, Dict
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
@@ -81,17 +82,16 @@ def retrieve(state: GraphState):
     print("---RETRIEVE---")
     question = state["question"]
 
-    # TODO: Implement actual Qdrant retrieval here. 
-    # For now, we return a mock document to allow graph construction without a running DB.
-    # In production, you would import a `retriever` from `app.services.ingestion`
-    documents = [
-        # Document(page_content="Mock content about the subject."),
-    ]
-    # Assuming we will inject the retriever later or import it:
-    # docs = retriever.invoke(question)
-    
-    # Placeholder Logic
-    docs = [Document(page_content="This is a placeholder document content provided by the system.")]
+    # Implement actual Qdrant retrieval
+    try:
+        from app.services.ingestion import get_retriever
+        retriever = get_retriever()
+        docs = retriever.invoke(question)
+    except Exception as e:
+        print(f"Error during retrieval: {e}")
+        raise e
+        # Fallback for resiliency
+        # docs = [Document(page_content=f"Could not retrieve documents. Error: {e}")]
     
     return {"documents": docs, "question": question}
 

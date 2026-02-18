@@ -30,7 +30,7 @@ export default function AdminPage() {
             toast.success("Ingestion Successful", { description: `Ingested ${filename}` })
             setText('')
             setFilename('')
-        } catch (e) {
+        } catch {
             toast.error("Ingestion Failed")
         } finally {
             setLoading(false)
@@ -44,11 +44,15 @@ export default function AdminPage() {
         formData.append('file', file)
 
         try {
-            await api.post('/ingest/file', formData)
+            await api.post('/ingest/file', formData, {
+                headers: {
+                    'Content-Type': null as any // Allow browser to set boundary
+                }
+            })
             toast.success("Ingestion Successful", { description: `Ingested ${file.name}` })
             setFile(null)
             // Reset file input value manually if needed, or rely on key reset
-        } catch (e) {
+        } catch {
             toast.error("Ingestion Failed")
         } finally {
             setLoading(false)
