@@ -5,15 +5,11 @@ import pathlib
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_qdrant import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
 from qdrant_client import QdrantClient
-from app.config import settings
-
-# Initialize Qdrant Client
 from qdrant_client.http import models as rest
-
-# ... (imports)
+from app.config import settings
 
 # Initialize Qdrant Client
 qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
@@ -34,10 +30,11 @@ except Exception:
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=settings.OPENAI_API_KEY)
 
 # Initialize Vector Store
-vectorstore = Qdrant(
+# UPDATED: Use QdrantVectorStore and 'embedding' parameter (singular)
+vectorstore = QdrantVectorStore(
     client=qdrant_client,
     collection_name=settings.QDRANT_COLLECTION_NAME,
-    embeddings=embeddings,
+    embedding=embeddings,
 )
 
 def ingest_text(text: str, metadata: dict = None):
@@ -48,9 +45,6 @@ def ingest_text(text: str, metadata: dict = None):
         metadata = {}
     
     # 1. Chunking
-    # Using RecursiveCharacterTextSplitter for robustness, 
-    # though SemanticChunker was requested, it requires more setup/experimental flags.
-    # We can stick to a high-overlap recursive splitter for now as a strong baseline.
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
@@ -65,12 +59,6 @@ def ingest_text(text: str, metadata: dict = None):
     vectorstore.add_documents(split_docs)
     
     return len(split_docs)
-
-def get_retriever():
-    """
-    Returns the vector store retriever.
-    """
-    return vectorstore.as_retriever()
 
 def ingest_file(file_path: str, original_filename: str):
     """

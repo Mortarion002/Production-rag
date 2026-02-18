@@ -37,6 +37,7 @@ httpx = "^0.26.0"
 # Fixed version to prevent the 'bcrypt' attribute error in passlib
 bcrypt = "3.2.0"
 pypdf = "^6.7.1"
+qdrant-client = "^1.16.2"
 
 [build-system]
 requires = ["poetry-core"]
