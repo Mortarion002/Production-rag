@@ -56,3 +56,7 @@ yarn-error.log*
 .pnpm-debug.log*
 *.log
 logs/
+
+##Docs
+test_doc.txt
+Company Policy - Google Docs.pdf
