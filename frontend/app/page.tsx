@@ -31,7 +31,7 @@ export default function Home() {
                   <Button className="bg-white text-black hover:bg-gray-200">Get Started</Button>
                 </Link>
                 <Link href="#">
-                  <Button variant="outline" className="text-white border-white hover:bg-white/10 hover:text-white">Learn More</Button>
+                  <Button variant="outline" className="text-black border-white hover:bg-white/10 hover:text-white">Learn More</Button>
                 </Link>
               </div>
             </div>
