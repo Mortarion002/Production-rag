@@ -132,4 +132,4 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-*Created by [EternalKnight002](https://github.com/EternalKnight002) — Built to learn, optimized for scale.*
+*Created by [EternalKnight002](https://github.com/Mortarion002) — Built to learn, optimized for scale.*
