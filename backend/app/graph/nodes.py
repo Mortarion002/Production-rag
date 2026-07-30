@@ -85,18 +85,28 @@ def retrieve(state: GraphState):
     question = state["question"]
     steps = state.get("steps", []) + ["retrieve"]
 
-    # Implement actual Qdrant retrieval
     try:
         from app.services.ingestion import get_retriever
         retriever = get_retriever()
         docs = retriever.invoke(question)
     except Exception as e:
         print(f"Error during retrieval: {e}")
-        raise e
-        # Fallback for resiliency
-        # docs = [Document(page_content=f"Could not retrieve documents. Error: {e}")]
+        return {"documents": [], "question": question, "steps": steps, "retrieval_error": str(e)}
 
-    return {"documents": docs, "question": question, "steps": steps}
+    return {"documents": docs, "question": question, "steps": steps, "retrieval_error": None}
+
+def handle_retrieval_error(state: GraphState):
+    """
+    Short-circuits straight to a fallback answer when the vector store is
+    unreachable, instead of feeding an empty document set into the normal
+    grade/generate/rewrite pipeline (which has no retry cap on that loop).
+    """
+    print("---RETRIEVAL FAILED, RETURNING FALLBACK---")
+    steps = state.get("steps", []) + ["handle_retrieval_error"]
+    return {
+        "generation": "I'm having trouble reaching the document store right now, so I can't answer from your documents. Please try again in a moment.",
+        "steps": steps,
+    }
 
 def generate(state: GraphState):
     """

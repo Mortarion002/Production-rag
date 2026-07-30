@@ -13,6 +13,7 @@ class GraphState(TypedDict):
         retry_count: number of retries for generation/hallucination checks
         hallucination_feedback: corrective note from hallucination_check for the next generate attempt
         steps: names of nodes visited, in execution order, for reporting back to the caller
+        retrieval_error: set by retrieve() when the vector store is unreachable, short-circuits to a fallback answer
     """
     question: str
     generation: Optional[str]
@@ -21,3 +22,4 @@ class GraphState(TypedDict):
     retry_count: int
     hallucination_feedback: Optional[str]
     steps: List[str]
+    retrieval_error: Optional[str]

@@ -1,6 +1,6 @@
 from langgraph.graph import END, StateGraph
 from app.graph.state import GraphState
-from app.graph.nodes import retrieve, grade_documents, generate, rewrite_query, hallucination_check
+from app.graph.nodes import retrieve, grade_documents, generate, rewrite_query, hallucination_check, handle_retrieval_error
 
 def decide_to_generate(state):
     """
@@ -26,11 +26,23 @@ workflow.add_node("grade_documents", grade_documents)
 workflow.add_node("generate", generate)
 workflow.add_node("rewrite_query", rewrite_query)
 workflow.add_node("hallucination_check", hallucination_check)
+workflow.add_node("handle_retrieval_error", handle_retrieval_error)
 
+
+def check_retrieval_edge(state):
+    return "handle_retrieval_error" if state.get("retrieval_error") else "grade_documents"
 
 # Build graph
 workflow.set_entry_point("retrieve")
-workflow.add_edge("retrieve", "grade_documents")
+workflow.add_conditional_edges(
+    "retrieve",
+    check_retrieval_edge,
+    {
+        "handle_retrieval_error": "handle_retrieval_error",
+        "grade_documents": "grade_documents",
+    },
+)
+workflow.add_edge("handle_retrieval_error", END)
 
 workflow.add_conditional_edges(
     "grade_documents",
