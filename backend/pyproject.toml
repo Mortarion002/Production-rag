@@ -42,6 +42,12 @@ qdrant-client = "^1.16.2"
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 
+[tool.pytest.ini_options]
+# Without this, `poetry run pytest` (invokes the pytest console script
+# directly, not via `python -m`) fails with "No module named 'app'" -
+# only `python -m pytest` auto-adds the cwd to sys.path.
+pythonpath = ["."]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
