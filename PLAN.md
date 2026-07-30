@@ -4,9 +4,9 @@ Active checklist. One running plan for the whole project — check items off as 
 
 ## Repo hygiene
 
-- [ ] Remove committed debug/scratch files from git: `backend/chat_log.txt`, `backend/debug_test.txt`, `backend/error_detail_chat.txt`, `backend/debug_ingestion.py`, `backend/debug_upload.py`, `backend/verify_ingestion.py`
-- [ ] Decide what to do with root-level `test_doc.txt` and `Company Policy - Google Docs.pdf` (already gitignored going forward, but still tracked from before) — either untrack them or move to a clearly-labeled `fixtures/` dir
-- [ ] Add a `.env.example` to `backend/` documenting all expected env vars with correct casing
+- [x] Remove committed debug/scratch files from git: `backend/chat_log.txt`, `backend/debug_test.txt`, `backend/error_detail_chat.txt`, `backend/debug_ingestion.py`, `backend/debug_upload.py`, `backend/verify_ingestion.py`
+- [x] Root-level `test_doc.txt` and `Company Policy - Google Docs.pdf` — verified via `git ls-files` they were never actually tracked (already covered by `.gitignore`); no action needed
+- [x] Add a `.env.example` to `backend/` documenting all expected env vars with correct casing — also fixed README's env block, which showed a `DATABASE_URL` var that isn't actually read (it's built from `POSTGRES_*` vars)
 
 ## Correctness bugs
 

@@ -87,8 +87,14 @@ graph TD
    SECRET_KEY=your_jwt_secret_key
    ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=30
-   DATABASE_URL=postgresql://user:password@localhost/dbname
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your-db-password
+   POSTGRES_DB=rag_metadata
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
    ```
+
+   See `backend/.env.example` for the full, authoritative list of variables (`DATABASE_URL` is built from the `POSTGRES_*` values above, not read directly).
 
 4. **Run the Server:**
    ```bash
