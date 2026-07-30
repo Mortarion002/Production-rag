@@ -7,8 +7,8 @@ class Settings:
     # LLM
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    LLM_MODEL_FAST = os.getenv("llm_model_fast", "gpt-4o-mini") #gpt-3.5-turbo-0125
-    LLM_MODEL_SMART = os.getenv("llm_model_smart", "gpt-4o-mini")#gpt-4-turbo-preview
+    LLM_MODEL_FAST = os.getenv("LLM_MODEL_FAST", "gpt-4o-mini") #gpt-3.5-turbo-0125
+    LLM_MODEL_SMART = os.getenv("LLM_MODEL_SMART", "gpt-4o-mini")#gpt-4-turbo-preview
 
     # Qdrant
     QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")

@@ -11,15 +11,15 @@ A corrective RAG (Retrieval-Augmented Generation) chatbot. Users upload document
 ### Backend (`backend/app/`)
 
 **Graph pipeline** (`graph/`) — the core of the system:
-- `state.py` — `GraphState` TypedDict: `question`, `generation`, `documents`, `run_web_search`, `retry_count`.
-- `nodes.py` — node functions, each with its own `PromptTemplate`:
+- `state.py` — `GraphState` TypedDict: `question`, `generation`, `documents`, `run_web_search`, `retry_count`, `hallucination_feedback`, `steps`.
+- `nodes.py` — node functions, each with its own `PromptTemplate`, each appending its own name to `steps` so the caller can see the real execution path:
   - `retrieve` — fetches context from Qdrant.
   - `grade_documents` — evaluates document relevance (fast LLM).
-  - `generate` — produces the answer (smart LLM).
+  - `generate` — produces the answer (smart LLM); if `hallucination_feedback` is set (from a prior failed retry), it's injected into the prompt as a corrective note.
   - `rewrite_query` — rewrites the question when retrieval is weak (fast LLM).
-  - `hallucination_check` — verifies the answer is grounded in retrieved docs.
+  - `hallucination_check` — verifies the answer is grounded in retrieved docs and addresses the question. Owns the retry-cap decision: while retries remain, it sets `hallucination_feedback` and clears `generation` to loop back to `generate`; once `retry_count` hits `MAX_RETRIES` (3), it returns a fallback message as `generation` instead of looping forever or leaving the answer `None`.
 - `graph.py` — wires nodes into a `StateGraph`:
-  `retrieve → grade_documents → (rewrite_query loop | generate) → hallucination_check → (loop to generate | END)`, capped at 3 retries.
+  `retrieve → grade_documents → (rewrite_query loop | generate) → hallucination_check → (loop to generate | END)`. The conditional edge after `hallucination_check` is a simple `generation is None → loop, else → END`, since the node itself guarantees `generation` is never left `None` once retries are exhausted.
 
 Two-tier LLM strategy: a fast/cheap model for grading and rewriting, a smarter model for generation. Both default to `gpt-4o-mini` (configurable via `LLM_MODEL_FAST` / `LLM_MODEL_SMART`).
 

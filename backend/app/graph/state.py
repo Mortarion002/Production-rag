@@ -11,9 +11,13 @@ class GraphState(TypedDict):
         documents: list of documents
         run_web_search: whether to add web search
         retry_count: number of retries for generation/hallucination checks
+        hallucination_feedback: corrective note from hallucination_check for the next generate attempt
+        steps: names of nodes visited, in execution order, for reporting back to the caller
     """
     question: str
     generation: Optional[str]
     documents: List[Document]
     run_web_search: bool
     retry_count: int
+    hallucination_feedback: Optional[str]
+    steps: List[str]
