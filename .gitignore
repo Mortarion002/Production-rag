@@ -25,6 +25,7 @@ poetry.lock
 .env.production.local
 *.env
 .env.*
+!.env.example
 secrets.toml
 
 # --- Database & Vector Store ---
