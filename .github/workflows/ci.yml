@@ -12,6 +12,10 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # Dummy value: ChatOpenAI validates a key is present at construction
+      # time, but tests mock every LLM call, so it's never actually used.
+      OPENAI_API_KEY: sk-test-dummy-key-for-ci
     steps:
       - uses: actions/checkout@v4
 
