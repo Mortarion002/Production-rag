@@ -10,10 +10,10 @@ Active checklist. One running plan for the whole project — check items off as 
 
 ## Correctness bugs
 
-- [ ] Fix env var casing mismatch in `backend/app/config.py:10-11` (`os.getenv("llm_model_fast", ...)` / `"llm_model_smart"`) — should match the uppercase names used in README/`.env` examples, or lookups silently no-op on case-sensitive systems
-- [ ] Resolve dead code in `backend/app/graph/graph.py`: `grade_generation_and_documents` (lines 21-39) is defined but never wired into the `StateGraph` — either remove it or replace `check_hallucination_edge` with it if it was meant to supersede that logic
-- [ ] Give the hallucination-check retry path actual feedback (currently loops back to `generate` blind when grounding fails, with no signal about what to fix)
-- [ ] Make `/chat`'s response `steps` field reflect the real execution path instead of a hardcoded placeholder list
+- [x] Fix env var casing mismatch in `backend/app/config.py:10-11` — now reads `LLM_MODEL_FAST`/`LLM_MODEL_SMART` (uppercase), matching `.env.example`/README
+- [x] Resolve dead code in `backend/app/graph/graph.py` — removed unused `grade_generation_and_documents`; its retry-cap logic is now correctly owned by `hallucination_check` itself
+- [x] Give the hallucination-check retry path actual feedback — added `hallucination_feedback` to `GraphState`; `hallucination_check` sets a specific corrective note (different for "ungrounded" vs "doesn't address the question") and `generate` injects it into the prompt on retry. Also fixed a related bug: retries exhausted while still ungrounded used to return `END` with `generation` still `None` (a silent `null` answer to the frontend) — now returns a clear fallback message instead
+- [x] Make `/chat`'s response `steps` field reflect the real execution path — added `steps: List[str]` to `GraphState`, each node appends its own name, `server.py` returns the accumulated list instead of a hardcoded placeholder
 
 ## Resilience
 

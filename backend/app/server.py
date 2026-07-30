@@ -44,14 +44,8 @@ async def chat_endpoint(request: ChatRequest, current_user: models.User = Depend
     """
     inputs = {"question": request.question, "retry_count": 0}
     config = {"configurable": {"thread_id": request.thread_id}}
-    
-    # Run the graph
-    # For streaming, we might want to use a streaming response, 
-    # but for simplicity in this scaffold we return the final state or use simple invoke.
-    # To support "intermediate steps" on frontend, we should ideally use StreamingResponse with SSE.
-    # For now, let's just return the final result.
-    
-    # For now, let's just return the final result.
+
+    # Synchronous invoke for now; streaming is tracked separately in PLAN.md.
     try:
         final_state = graph_app.invoke(inputs, config=config)
     except Exception as e:
@@ -60,10 +54,10 @@ async def chat_endpoint(request: ChatRequest, current_user: models.User = Depend
         print(f"Error in chat endpoint: {e}")
         print(traceback_str)
         raise HTTPException(status_code=500, detail=f"Error: {str(e)} Traceback: {traceback_str}")
-    
+
     return {
         "answer": final_state.get("generation"),
-        "steps": ["Retrieved docs", "Graded docs", "Generated answer"] # Placeholder for actual steps
+        "steps": final_state.get("steps", []),
     }
 
 @app.post("/ingest")

@@ -35,11 +35,13 @@ grade_prompt = PromptTemplate(
 generate_prompt = PromptTemplate(
     template="""You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. \n
     If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. \n
-    Question: {question} \n
+    {feedback_section}Question: {question} \n
     Context: {context} \n
     Answer:""",
-    input_variables=["question", "context"],
+    input_variables=["question", "context", "feedback_section"],
 )
+
+MAX_RETRIES = 3
 
 # Hallucination Checker
 hallucination_prompt = PromptTemplate(
@@ -81,6 +83,7 @@ def retrieve(state: GraphState):
     """
     print("---RETRIEVE---")
     question = state["question"]
+    steps = state.get("steps", []) + ["retrieve"]
 
     # Implement actual Qdrant retrieval
     try:
@@ -92,8 +95,8 @@ def retrieve(state: GraphState):
         raise e
         # Fallback for resiliency
         # docs = [Document(page_content=f"Could not retrieve documents. Error: {e}")]
-    
-    return {"documents": docs, "question": question}
+
+    return {"documents": docs, "question": question, "steps": steps}
 
 def generate(state: GraphState):
     """
@@ -108,11 +111,14 @@ def generate(state: GraphState):
     print("---GENERATE---")
     question = state["question"]
     documents = state["documents"]
-    
+    steps = state.get("steps", []) + ["generate"]
+    feedback = state.get("hallucination_feedback")
+    feedback_section = f"Note: {feedback} \n    " if feedback else ""
+
     # RAG generation
     rag_chain = generate_prompt | llm_smart | StrOutputParser()
-    generation = rag_chain.invoke({"context": documents, "question": question})
-    return {"documents": documents, "question": question, "generation": generation}
+    generation = rag_chain.invoke({"context": documents, "question": question, "feedback_section": feedback_section})
+    return {"documents": documents, "question": question, "generation": generation, "steps": steps}
 
 def grade_documents(state: GraphState):
     """
@@ -128,7 +134,8 @@ def grade_documents(state: GraphState):
     print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
     question = state["question"]
     documents = state["documents"]
-    
+    steps = state.get("steps", []) + ["grade_documents"]
+
     # Score each doc
     grader = grade_prompt | llm_fast | JsonOutputParser()
     
@@ -150,7 +157,7 @@ def grade_documents(state: GraphState):
         print("---GRADE: NO RELEVANT DOCUMENTS, RUN WEB SEARCH/REWRITE---")
         run_web_search = True
         
-    return {"documents": filtered_docs, "question": question, "run_web_search": run_web_search}
+    return {"documents": filtered_docs, "question": question, "run_web_search": run_web_search, "steps": steps}
 
 def rewrite_query(state: GraphState):
     """
@@ -165,11 +172,12 @@ def rewrite_query(state: GraphState):
     print("---TRANSFORM QUERY---")
     question = state["question"]
     documents = state["documents"]
+    steps = state.get("steps", []) + ["rewrite_query"]
 
     # Re-write question
     chain = rewrite_prompt | llm_fast | StrOutputParser()
     better_question = chain.invoke({"question": question})
-    return {"documents": documents, "question": better_question}
+    return {"documents": documents, "question": better_question, "steps": steps}
 
 def hallucination_check(state: GraphState):
     """
@@ -180,6 +188,7 @@ def hallucination_check(state: GraphState):
     documents = state["documents"]
     generation = state["generation"]
     retry_count = state.get("retry_count", 0)
+    steps = state.get("steps", []) + ["hallucination_check"]
 
     hallucination_grader = hallucination_prompt | llm_fast | JsonOutputParser()
     answer_grader = answer_grader_prompt | llm_fast | JsonOutputParser()
@@ -194,11 +203,26 @@ def hallucination_check(state: GraphState):
         grade = score['score']
         if grade == "yes":
             print("---DECISION: GENERATION ADDRESSES QUESTION---")
-            return {"generation": generation, "retry_count": retry_count}
-        else:
-            print("---DECISION: GENERATION DOES NOT ADDRESS QUESTION---")
-            # If we haven't retried too many times, maybe retry?
-            return {"generation": "Sorry, I could not generate a relevant answer.", "retry_count": retry_count + 1}
-    else:
-        print("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRYING---")
-        return {"generation": None, "retry_count": retry_count + 1}
+            return {"generation": generation, "retry_count": retry_count, "hallucination_feedback": None, "steps": steps}
+
+        print("---DECISION: GENERATION DOES NOT ADDRESS QUESTION---")
+        if retry_count >= MAX_RETRIES:
+            return {
+                "generation": "I wasn't able to produce an answer that directly addresses your question based on the available documents.",
+                "retry_count": retry_count,
+                "hallucination_feedback": None,
+                "steps": steps,
+            }
+        feedback = f"Your previous answer did not directly address the question '{question}'. Answer that question directly and concisely using only the context below."
+        return {"generation": None, "retry_count": retry_count + 1, "hallucination_feedback": feedback, "steps": steps}
+
+    print("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS---")
+    if retry_count >= MAX_RETRIES:
+        return {
+            "generation": "I couldn't verify that my answer is fully supported by the provided documents, so I'm unable to give a confident response.",
+            "retry_count": retry_count,
+            "hallucination_feedback": None,
+            "steps": steps,
+        }
+    feedback = "Your previous answer included claims not supported by the provided context. Rewrite the answer using only information found in the context below; if the context doesn't contain the answer, say you don't know."
+    return {"generation": None, "retry_count": retry_count + 1, "hallucination_feedback": feedback, "steps": steps}
