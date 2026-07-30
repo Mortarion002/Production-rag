@@ -46,7 +46,7 @@ export default function AdminPage() {
         try {
             await api.post('/ingest/file', formData, {
                 headers: {
-                    'Content-Type': null as any // Allow browser to set boundary
+                    'Content-Type': undefined // Allow browser to set boundary
                 }
             })
             toast.success("Ingestion Successful", { description: `Ingested ${file.name}` })
