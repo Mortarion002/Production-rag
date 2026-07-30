@@ -11,31 +11,41 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from app.config import settings
 
-# Initialize Qdrant Client
-qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
+_vectorstore = None
 
-# Ensure collection exists
-try:
-    qdrant_client.get_collection(settings.QDRANT_COLLECTION_NAME)
-except Exception:
-    qdrant_client.create_collection(
+def _get_vectorstore():
+    """
+    Lazily builds the Qdrant client/collection/vectorstore on first use.
+    Importing this module must not require a live Qdrant connection -
+    server.py imports ingest_text/ingest_file at module level, so a
+    module-level connection here would make the whole app fail to boot
+    whenever Qdrant is unreachable, not just the requests that need it.
+    """
+    global _vectorstore
+    if _vectorstore is not None:
+        return _vectorstore
+
+    qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
+
+    try:
+        qdrant_client.get_collection(settings.QDRANT_COLLECTION_NAME)
+    except Exception:
+        qdrant_client.create_collection(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            vectors_config=rest.VectorParams(
+                size=1536, # text-embedding-3-small dimension
+                distance=rest.Distance.COSINE,
+            ),
+        )
+
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=settings.OPENAI_API_KEY)
+
+    _vectorstore = QdrantVectorStore(
+        client=qdrant_client,
         collection_name=settings.QDRANT_COLLECTION_NAME,
-        vectors_config=rest.VectorParams(
-            size=1536, # text-embedding-3-small dimension
-            distance=rest.Distance.COSINE,
-        ),
+        embedding=embeddings,
     )
-
-# Initialize Embeddings
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=settings.OPENAI_API_KEY)
-
-# Initialize Vector Store
-# UPDATED: Use QdrantVectorStore and 'embedding' parameter (singular)
-vectorstore = QdrantVectorStore(
-    client=qdrant_client,
-    collection_name=settings.QDRANT_COLLECTION_NAME,
-    embedding=embeddings,
-)
+    return _vectorstore
 
 def ingest_text(text: str, metadata: dict = None):
     """
@@ -43,7 +53,7 @@ def ingest_text(text: str, metadata: dict = None):
     """
     if metadata is None:
         metadata = {}
-    
+
     # 1. Chunking
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
@@ -51,13 +61,13 @@ def ingest_text(text: str, metadata: dict = None):
         length_function=len,
         is_separator_regex=False,
     )
-    
+
     docs = [Document(page_content=text, metadata=metadata)]
     split_docs = text_splitter.split_documents(docs)
-    
+
     # 2. Indexing
-    vectorstore.add_documents(split_docs)
-    
+    _get_vectorstore().add_documents(split_docs)
+
     return len(split_docs)
 
 def ingest_file(file_path: str, original_filename: str):
@@ -87,13 +97,13 @@ def ingest_file(file_path: str, original_filename: str):
     )
     
     split_docs = text_splitter.split_documents(docs)
-    
+
     # 2. Indexing
     if split_docs:
-        vectorstore.add_documents(split_docs)
-    
+        _get_vectorstore().add_documents(split_docs)
+
     return len(split_docs)
 
 def get_retriever():
     """Returns the vector store retriever."""
-    return vectorstore.as_retriever(search_kwargs={"k": 5})
+    return _get_vectorstore().as_retriever(search_kwargs={"k": 5})

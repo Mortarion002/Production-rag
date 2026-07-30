@@ -13,6 +13,7 @@ How to work in this repo. See `PROJECT_BRIEF.md` for what the system does and it
 Backend (from `backend/`):
 - `poetry install` — install deps
 - `poetry run uvicorn app.server:app --reload` — run dev server
+- `poetry run pytest` — run backend tests (graph nodes/edges, auth) — no live Qdrant/Postgres needed, DB is an in-memory SQLite fixture and LLM calls are mocked
 - `docker-compose up -d` (from repo root) — start Qdrant + Postgres
 
 Frontend (from `frontend/`):
@@ -20,8 +21,9 @@ Frontend (from `frontend/`):
 - `npm run dev` — dev server (localhost:3000)
 - `npm run build` — production build
 - `npm run lint` — eslint
+- `npm run test` — run frontend tests (currently: `middleware.ts` route-protection logic)
 
-There is no test suite yet. There is no CI. Treat a clean `npm run build` and a successful manual exercise of the changed flow as the bar for "done" until tests exist.
+There is no CI yet. Treat a clean `npm run build`, a passing `pytest`/`npm run test`, and a successful manual exercise of the changed flow as the bar for "done".
 
 ## Folder conventions
 

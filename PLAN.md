@@ -21,11 +21,13 @@ Active checklist. One running plan for the whole project — check items off as 
 - [x] Review default secrets — `.env.example` documents the override path; `config.py` now prints a startup warning if `SECRET_KEY`/`POSTGRES_PASSWORD` are still the hardcoded defaults
 - [x] CORS — confirmed with the user there's no deployment target yet, so `http://localhost:3000` stays the default, but it's now env-configurable (`CORS_ORIGINS`) so a future deploy is a one-line `.env` change, not a code change
 
-## Future features (not started)
+## Future features
 
 - [ ] Streaming responses for `/chat` (currently a single synchronous `graph_app.invoke()`)
-- [ ] Automated test suite (backend: graph nodes/edges, auth; frontend: at least route protection)
-- [ ] CI pipeline (build + lint on PR, at minimum)
+- [x] Automated test suite — `backend/tests/` (pytest: graph nodes/edges, auth, `/chat`/`/ingest` role gating), `frontend/middleware.test.ts` (vitest: route protection). Found and fixed two real bugs along the way:
+  - `ingestion.py` connected to Qdrant at *module import time*, meaning `app.server` — and the whole app — would fail to boot if Qdrant was down at startup, not just fail gracefully mid-request as the resilience PR intended. Now lazily initialized on first use.
+  - `frontend/context/auth-context.tsx` used Python type names (`str`, `bool`) in TypeScript annotations — present since the very first commit, meaning `npm run build` has never actually succeeded on this repo until now. Fixed to `string`/`boolean`.
+- [ ] CI pipeline (build + lint + test on PR, at minimum)
 
 ---
 *When starting a new feature not listed here: enter plan mode, propose the steps, get them added to this file, then implement per the loop in `CLAUDE.md`.*

@@ -33,7 +33,7 @@ Two-tier LLM strategy: a fast/cheap model for grading and rewriting, a smarter m
 
 **Auth** (`auth/`) — JWT-based, two roles: `USER` and `ADMIN`. Admin role gates ingestion endpoints.
 
-**Ingestion** (`services/ingestion.py`) — bootstraps the Qdrant client/collection, chunks documents with `RecursiveCharacterTextSplitter`, exposes `ingest_text`, `ingest_file`, `get_retriever`.
+**Ingestion** (`services/ingestion.py`) — chunks documents with `RecursiveCharacterTextSplitter`, exposes `ingest_text`, `ingest_file`, `get_retriever`. The Qdrant client/collection/vectorstore are lazily built on first use via `_get_vectorstore()`, not at module import — importing the module (and therefore `server.py`, which imports from it at top level) must never require a live Qdrant connection.
 
 **Storage**: Qdrant for vectors, PostgreSQL (via SQLAlchemy/asyncpg) for user accounts/roles.
 
@@ -59,5 +59,9 @@ Flat App Router routes: `/` (landing), `/login`, `/signup`, `/dashboard`, `/chat
 These aren't roadmap items — they're honest gaps in what exists today. See `PLAN.md` for the active cleanup checklist.
 
 - No streaming — `/chat` uses a synchronous `graph_app.invoke()`.
-- No automated tests.
 - No CI pipeline.
+
+## Testing
+
+- `backend/tests/` (pytest): `conftest.py` overrides `get_db` with an in-memory SQLite DB and provides a `TestClient` fixture; `test_graph_nodes.py` covers the conditional-edge functions and the node functions that need mocked LLM calls (swap the whole `nodes.llm_fast`/`nodes.llm_smart` module global for a fake `Runnable` — `ChatOpenAI` is a pydantic model and rejects patching `.invoke` directly); `test_auth.py` covers signup/login and role gating on `/ingest` and `/chat` via real endpoint calls.
+- `frontend/middleware.test.ts` (vitest): unit-tests `middleware.ts`'s redirect rules directly with real `NextRequest`s and real JWTs signed via `jose`'s `SignJWT` — no mocking of `jose` internals.

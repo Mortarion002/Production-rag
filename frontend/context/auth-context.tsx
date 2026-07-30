@@ -11,10 +11,10 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password: str) => Promise<void>;
-    signup: (email: string, password: str) => Promise<void>;
+    login: (email: string, password: string) => Promise<void>;
+    signup: (email: string, password: string) => Promise<void>;
     logout: () => void;
-    loading: bool;
+    loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
     }, []);
 
-    const login = async (email: str, password: str) => {
+    const login = async (email: string, password: string) => {
         try {
             const formData = new FormData();
             formData.append('username', email);
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const signup = async (email: str, password: str) => {
+    const signup = async (email: string, password: string) => {
         try {
             await axios.post('/auth/signup', { email, password });
             // Auto login or redirect to login? Redirect to login for now.
