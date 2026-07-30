@@ -23,7 +23,7 @@ Frontend (from `frontend/`):
 - `npm run lint` — eslint
 - `npm run test` — run frontend tests (currently: `middleware.ts` route-protection logic)
 
-There is no CI yet. Treat a clean `npm run build`, a passing `pytest`/`npm run test`, and a successful manual exercise of the changed flow as the bar for "done".
+CI (`.github/workflows/ci.yml`) runs `pytest` (backend) and `lint`/`build`/`test` (frontend) on every PR to `main` and every push to `main`. Treat a clean `npm run build`, a passing `pytest`/`npm run test`, and a successful manual exercise of the changed flow as the bar for "done" — CI is the safety net, not a substitute for checking locally first.
 
 ## Folder conventions
 

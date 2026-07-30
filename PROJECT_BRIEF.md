@@ -59,9 +59,9 @@ Flat App Router routes: `/` (landing), `/login`, `/signup`, `/dashboard`, `/chat
 These aren't roadmap items — they're honest gaps in what exists today. See `PLAN.md` for the active cleanup checklist.
 
 - No streaming — `/chat` uses a synchronous `graph_app.invoke()`.
-- No CI pipeline.
 
-## Testing
+## Testing & CI
 
 - `backend/tests/` (pytest): `conftest.py` overrides `get_db` with an in-memory SQLite DB and provides a `TestClient` fixture; `test_graph_nodes.py` covers the conditional-edge functions and the node functions that need mocked LLM calls (swap the whole `nodes.llm_fast`/`nodes.llm_smart` module global for a fake `Runnable` — `ChatOpenAI` is a pydantic model and rejects patching `.invoke` directly); `test_auth.py` covers signup/login and role gating on `/ingest` and `/chat` via real endpoint calls.
 - `frontend/middleware.test.ts` (vitest): unit-tests `middleware.ts`'s redirect rules directly with real `NextRequest`s and real JWTs signed via `jose`'s `SignJWT` — no mocking of `jose` internals.
+- `.github/workflows/ci.yml`: backend (`pytest`) and frontend (`lint`/`build`/`test`) jobs, triggered on PRs to `main` and pushes to `main`. Deliberately needs no live Postgres/Qdrant — that's why the test suite and the ingestion service's lazy init exist in the shape they do.

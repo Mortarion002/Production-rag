@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '@/lib/axios';
 
@@ -19,32 +19,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
+function decodeUserFromToken(token: string): User | null {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        return { email: payload.sub, role: payload.role };
+    } catch (e) {
+        console.error("Failed to decode token", e);
+        return null;
+    }
+}
 
-    useEffect(() => {
-        // hydrating user from token would require an endpoint /me
-        // optimization: decode token client side or call /me
-        // for now, we leave it simple: if token exists, we assume logged in? 
-        // better to decode JWT payload locally to get role/email immediately
-        const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-        if (token) {
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const payload = JSON.parse(jsonPayload);
-                setUser({ email: payload.sub, role: payload.role });
-            } catch (e) {
-                console.error("Failed to decode token", e);
-            }
-        }
-        setLoading(false);
-    }, []);
+function getUserFromCookie(): User | null {
+    if (typeof document === 'undefined') return null;
+    const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    return token ? decodeUserFromToken(token) : null;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+    // Lazy initializer instead of an effect+setState roundtrip: this needs to
+    // be SSR-safe (no `document` on the server), so getUserFromCookie() guards
+    // on typeof document, and the client's first render already has the
+    // decoded user available instead of one extra render later.
+    const [user, setUser] = useState<User | null>(getUserFromCookie);
+    // Kept for AuthContextType compatibility; always false since the user is
+    // now resolved synchronously by the lazy initializer above, no async gap.
+    const loading = false;
+    const router = useRouter();
 
     const login = async (email: string, password: string) => {
         try {
@@ -60,14 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Set cookie
             document.cookie = `token=${token}; path=/; max-age=1800; SameSite=Strict`; // 30 mins
 
-            // Decode and set user
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            const payload = JSON.parse(jsonPayload);
-            setUser({ email: payload.sub, role: payload.role });
+            setUser(decodeUserFromToken(token));
 
             router.push('/chat');
         } catch (error) {
