@@ -5,6 +5,7 @@ import pathlib
 from typing import List, Dict, Any
 
 from app.auth import router as auth_router, jwt, models
+from app.config import settings
 from app.graph.graph import app as graph_app
 from app.services.ingestion import ingest_text, ingest_file
 import shutil
@@ -16,7 +17,7 @@ app = FastAPI(title="Advanced RAG API")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

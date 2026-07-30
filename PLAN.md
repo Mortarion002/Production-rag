@@ -17,9 +17,9 @@ Active checklist. One running plan for the whole project — check items off as 
 
 ## Resilience
 
-- [ ] Add a fallback/graceful error response in `retrieve()` when Qdrant is unreachable, instead of letting it re-raise and 500 the whole `/chat` request
-- [ ] Review default secrets in `config.py`/`docker-compose.yml` (`SECRET_KEY`, Postgres password) — fine for dev, but confirm there's a documented path to override them before any real deployment
-- [ ] Confirm CORS config (currently hardcoded to `http://localhost:3000`) is intentional for current deployment plans
+- [x] Add a fallback/graceful error response in `retrieve()` when Qdrant is unreachable — it now catches the error, sets `retrieval_error`, and a new `handle_retrieval_error` node short-circuits straight to a fallback answer instead of feeding empty docs into the (uncapped) rewrite loop or 500ing
+- [x] Review default secrets — `.env.example` documents the override path; `config.py` now prints a startup warning if `SECRET_KEY`/`POSTGRES_PASSWORD` are still the hardcoded defaults
+- [x] CORS — confirmed with the user there's no deployment target yet, so `http://localhost:3000` stays the default, but it's now env-configurable (`CORS_ORIGINS`) so a future deploy is a one-line `.env` change, not a code change
 
 ## Future features (not started)
 
