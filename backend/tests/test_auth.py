@@ -1,6 +1,19 @@
+import json
 from unittest.mock import MagicMock
 
 from app.auth import models, jwt as jwt_module
+
+
+def _parse_sse(body: str) -> list[dict]:
+    events = []
+    for block in body.strip().split("\n\n"):
+        if not block.strip():
+            continue
+        lines = block.splitlines()
+        event = next(l.split(": ", 1)[1] for l in lines if l.startswith("event: "))
+        data = next(l.split(": ", 1)[1] for l in lines if l.startswith("data: "))
+        events.append({"event": event, "data": json.loads(data)})
+    return events
 
 
 def _signup(client, email="user@example.com", password="password123"):
@@ -82,14 +95,20 @@ def test_chat_requires_auth(client):
     assert resp.status_code == 401
 
 
-def test_chat_returns_answer_and_steps_for_authenticated_user(client, monkeypatch):
+def test_chat_streams_step_events_then_done(client, monkeypatch):
     _signup(client)
     token = _login(client).json()["access_token"]
 
-    monkeypatch.setattr(
-        "app.server.graph_app.invoke",
-        MagicMock(return_value={"generation": "the answer", "steps": ["retrieve", "generate"]}),
-    )
+    updates = [
+        {"retrieve": {"steps": ["retrieve"]}},
+        {"grade_documents": {"steps": ["retrieve", "grade_documents"]}},
+        {"generate": {"steps": ["retrieve", "grade_documents", "generate"]}},
+        {"hallucination_check": {
+            "steps": ["retrieve", "grade_documents", "generate", "hallucination_check"],
+            "generation": "the answer",
+        }},
+    ]
+    monkeypatch.setattr("app.server.graph_app.stream", MagicMock(return_value=iter(updates)))
 
     resp = client.post(
         "/chat",
@@ -97,4 +116,33 @@ def test_chat_returns_answer_and_steps_for_authenticated_user(client, monkeypatc
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"answer": "the answer", "steps": ["retrieve", "generate"]}
+    assert resp.headers["content-type"].startswith("text/event-stream")
+
+    events = _parse_sse(resp.text)
+    assert [e["event"] for e in events] == ["step", "step", "step", "step", "done"]
+    assert events[0]["data"] == {"node": "retrieve", "label": "Retrieving documents..."}
+    assert events[-1]["data"] == {
+        "answer": "the answer",
+        "steps": ["retrieve", "grade_documents", "generate", "hallucination_check"],
+    }
+
+
+def test_chat_emits_error_event_on_exception(client, monkeypatch):
+    _signup(client)
+    token = _login(client).json()["access_token"]
+
+    def _raise(*args, **kwargs):
+        raise RuntimeError("graph blew up")
+        yield  # pragma: no cover - makes this a generator function
+
+    monkeypatch.setattr("app.server.graph_app.stream", _raise)
+
+    resp = client.post(
+        "/chat",
+        json={"question": "hello"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    assert events[-1]["event"] == "error"
+    assert "graph blew up" in events[-1]["data"]["detail"]

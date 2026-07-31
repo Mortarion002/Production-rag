@@ -30,7 +30,7 @@ CI (`.github/workflows/ci.yml`) runs `pytest` (backend) and `lint`/`build`/`test
 - `backend/app/graph/` — LangGraph core: `state.py` (GraphState schema), `nodes.py` (node functions, one per pipeline stage), `graph.py` (StateGraph wiring + conditional edges). Keep node functions single-purpose; wire control flow only in `graph.py`.
 - `backend/app/auth/` — JWT auth: models, schemas, router, token logic.
 - `backend/app/services/` — external integrations (Qdrant ingestion/retrieval today).
-- `backend/app/server.py` — FastAPI routes only; no business logic here, call into `graph/` or `services/`.
+- `backend/app/server.py` — FastAPI routes only; no business logic here, call into `graph/` or `services/`. `/chat` streams Server-Sent Events (not a single JSON response): `step` events with `{node, label}` as the graph executes, then one `done` event with `{answer, steps}`, or an `error` event with `{detail}` on failure.
 - `frontend/app/<route>/page.tsx` — flat App Router routes (`/`, `/login`, `/signup`, `/dashboard`, `/chat`, `/admin`), no nested route groups yet.
 - `frontend/middleware.ts` — JWT-based route protection and role gating. Any new protected route must be added here.
 - `frontend/context/`, `frontend/lib/` — auth context and the Axios client.
@@ -41,7 +41,7 @@ CI (`.github/workflows/ci.yml`) runs `pytest` (backend) and `lint`/`build`/`test
 - One commit per completed step (see the per-feature loop below).
 - Run `npm run build` (frontend) and confirm the backend imports/starts cleanly before marking a step done.
 - Never commit debug scratch files, logs, or sample ingestion docs to the repo. `.gitignore` already lists `test_doc.txt` and `*.log`, but check `git status` before committing — several such files (`chat_log.txt`, `debug_*.py`, `error_detail_chat.txt`, `verify_ingestion.py`) were committed in the past before the ignore rules existed; don't reintroduce the pattern.
-- Backend env vars are read with exact case in `config.py` (e.g. `os.getenv("llm_model_fast", ...)`, lowercase) — when adding new settings, match the exact casing used in `os.getenv(...)` in both `config.py` and `.env`/README examples, since env var lookups are case-sensitive.
+- Backend env vars are read with exact case in `config.py` (e.g. `os.getenv("LLM_MODEL_FAST", ...)`, uppercase) — when adding new settings, match the exact casing used in `os.getenv(...)` in both `config.py` and `backend/.env.example`, since env var lookups are case-sensitive.
 - Never hardcode secrets (API keys, `SECRET_KEY`, DB passwords) as anything other than the existing dev-only fallback defaults in `config.py` — real values always come from `.env` (gitignored), never committed.
 - New LangGraph nodes/edges: wire them into `graph.py`'s `StateGraph` immediately. Don't leave a node or decision function defined but unwired — this repo has drifted that way before (see `PLAN.md`).
 

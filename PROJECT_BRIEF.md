@@ -27,7 +27,7 @@ Two-tier LLM strategy: a fast/cheap model for grading and rewriting, a smarter m
 **API** (`server.py`):
 - `GET /` — health check.
 - `POST /auth/token` — login, returns JWT.
-- `POST /chat` — JWT-protected, invokes the graph, returns an answer.
+- `POST /chat` — JWT-protected, streams the graph's execution as Server-Sent Events: a `step` event (`{node, label}`) per completed node, then one `done` event (`{answer, steps}`) — or an `error` event (`{detail}`) on failure. Streams *progress*, not the answer text itself — the answer can't be shown before `hallucination_check` verifies it, so that pipeline is unchanged; see `server.py`'s `_stream_chat`.
 - `POST /ingest` — admin-only, ingest raw text.
 - `POST /ingest/file` — admin-only, upload + ingest a file.
 
@@ -39,7 +39,9 @@ Two-tier LLM strategy: a fast/cheap model for grading and rewriting, a smarter m
 
 ### Frontend (`frontend/app/`)
 
-Flat App Router routes: `/` (landing), `/login`, `/signup`, `/dashboard`, `/chat`, `/admin`. `middleware.ts` enforces JWT-based auth and role gating on protected routes. `context/auth-context.tsx` holds client-side auth state; `lib/axios.ts` is the API client.
+Flat App Router routes: `/` (landing), `/login`, `/signup`, `/dashboard`, `/chat`, `/admin`. `middleware.ts` enforces JWT-based auth and role gating on protected routes. `context/auth-context.tsx` holds client-side auth state; `lib/axios.ts` is the API client (also exports `API_BASE_URL` and `getAuthToken()` for the one place that can't use the axios instance — see below). `lib/sse.ts` is a small pure parser for Server-Sent Event text chunks, used by the chat page's streaming consumer.
+
+`/chat`'s page (`app/chat/page.tsx`) reads the streaming response with `fetch` + `lib/sse.ts` directly, not the shared `axios` instance — axios doesn't expose a usable streaming body reader in the browser. `step` events populate a transient live-updating status list (replacing a static "Thinking..." pulse); the `done` event commits the final message.
 
 ### Infra
 
@@ -53,12 +55,6 @@ Flat App Router routes: `/` (landing), `/login`, `/signup`, `/dashboard`, `/chat
 - `CORS_ORIGINS` (comma-separated) controls allowed frontend origins for `server.py`'s `CORSMiddleware`; defaults to `http://localhost:3000`.
 - Frontend auth state flows through `middleware.ts` (route-level gating) + `context/auth-context.tsx` (component-level state) — new protected pages need both a middleware rule and to consume the auth context.
 - Sample/fixture documents for manual ingestion testing (e.g. `test_doc.txt`) belong outside version control or clearly marked as fixtures — not loose at repo root as committed files.
-
-## Known limitations (current state, not yet fixed)
-
-These aren't roadmap items — they're honest gaps in what exists today. See `PLAN.md` for the active cleanup checklist.
-
-- No streaming — `/chat` uses a synchronous `graph_app.invoke()`.
 
 ## Testing & CI
 

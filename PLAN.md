@@ -23,7 +23,7 @@ Active checklist. One running plan for the whole project — check items off as 
 
 ## Future features
 
-- [ ] Streaming responses for `/chat` (currently a single synchronous `graph_app.invoke()`)
+- [x] Streaming responses for `/chat` — decided with the user to stream *step progress* rather than token-by-token answer text, since the hallucination-check/answer-usefulness verification pipeline runs after the full answer is generated and stays completely unchanged (no correctness trade-off). `/chat` is now `StreamingResponse` (SSE): a `step` event per completed graph node (`graph_app.stream(..., stream_mode="updates")`), then one `done` event with `{answer, steps}` — same payload the old single-shot JSON response had. Frontend (`chat/page.tsx`) reads it via `fetch` + a small pure `lib/sse.ts` parser (axios can't stream response bodies usably in the browser) and shows a live-updating checklist in place of the old static "Thinking..." pulse.
 - [x] Automated test suite — `backend/tests/` (pytest: graph nodes/edges, auth, `/chat`/`/ingest` role gating), `frontend/middleware.test.ts` (vitest: route protection). Found and fixed two real bugs along the way:
   - `ingestion.py` connected to Qdrant at *module import time*, meaning `app.server` — and the whole app — would fail to boot if Qdrant was down at startup, not just fail gracefully mid-request as the resilience PR intended. Now lazily initialized on first use.
   - `frontend/context/auth-context.tsx` used Python type names (`str`, `bool`) in TypeScript annotations — present since the very first commit, meaning `npm run build` has never actually succeeded on this repo until now. Fixed to `string`/`boolean`.
