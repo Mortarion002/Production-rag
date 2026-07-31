@@ -1,20 +1,23 @@
 # Advanced RAG Chatbot
 
+[![CI](https://github.com/Mortarion002/Production-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Mortarion002/Production-rag/actions/workflows/ci.yml)
+
 An advanced Retrieval-Augmented Generation (RAG) system built with **FastAPI**, **LangGraph**, and **Next.js**. This application allows users to upload documents and chat with them using a sophisticated graph-based orchestration engine that ensures high-quality answers through grading, hallucination checks, and query rewriting.
 
 ## 🚀 Features
 
 - **Graph-Based RAG**: Uses `LangGraph` to orchestrate a corrective RAG flow:
-  - **Retrieval**: Fetches relevant context from Qdrant.
+  - **Retrieval**: Fetches relevant context from Qdrant, with a graceful fallback answer if the vector store is unreachable instead of a failed request.
   - **Grading**: Evaluates document relevance before generation.
-  - **Generation**: Produces answers using OpenAI LLMs.
-  - **Hallucination Check**: Verifies if the answer is grounded in documents.
-  - **Answer Grading**: Checks if the answer actually resolves the user's question.
+  - **Generation**: Produces answers using OpenAI LLMs, incorporating corrective feedback on retries.
+  - **Hallucination Check**: Verifies the answer is grounded in the retrieved documents and actually resolves the question; owns the retry loop and caps it at a bounded number of attempts.
   - **Query Rewriting**: Optimizes queries if initial retrieval is poor.
+- **Streaming Chat Responses**: `/chat` streams step-by-step progress (retrieving, grading, generating, verifying) via Server-Sent Events, so the UI shows live status instead of a static spinner while the graph runs.
 - **Dual-LLM Strategy**: Uses a faster model for routing/grading and a smarter model for generation.
 - **Document Ingestion**: Supports uploading PDF, TXT, and MD files with automatic chunking and embedding.
 - **Secure Authentication**: JWT-based authentication with role-based access control (User vs. Admin).
 - **Modern Frontend**: Built with Next.js 16, TypeScript, Tailwind CSS, and Shadcn/UI.
+- **Tested & CI'd**: pytest (backend) and Vitest (frontend) test suites, run automatically via GitHub Actions on every PR.
 
 ## 🛠️ Tech Stack
 
@@ -39,16 +42,19 @@ An advanced Retrieval-Augmented Generation (RAG) system built with **FastAPI**, 
 ```mermaid
 graph TD
     Start([Start]) --> Retrieve
-    Retrieve --> GradeDocuments
-    GradeDocuments -->|Relevance High| Generate
-    GradeDocuments -->|Relevance Low| RewriteQuery
+    Retrieve -->|Qdrant unreachable| RetrievalError[Fallback Answer]
+    Retrieve -->|OK| GradeDocuments
+    RetrievalError --> End([End])
+    GradeDocuments -->|Relevant docs| Generate
+    GradeDocuments -->|No relevant docs| RewriteQuery
     RewriteQuery --> Retrieve
     Generate --> HallucinationCheck
-    HallucinationCheck -->|Grounded| AnswerCheck
-    HallucinationCheck -->|Hallucination| Generate
-    AnswerCheck -->|Useful| End([End])
-    AnswerCheck -->|Not Useful| RewriteQuery
+    HallucinationCheck -->|Grounded and useful| End
+    HallucinationCheck -->|Needs retry, with feedback| Generate
+    HallucinationCheck -->|Retries exhausted| End
 ```
+
+Each node reports its own progress; `/chat` streams that progress live (see [API Endpoints](#-api-endpoints)) rather than blocking silently until the whole graph finishes.
 
 ## 🚀 Getting Started
 
@@ -124,11 +130,27 @@ graph TD
 4. **Access the App:**
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## 🧪 Running Tests
+
+Backend (from `backend/`, no live Qdrant/Postgres needed — an in-memory SQLite DB is used and LLM calls are mocked):
+
+```bash
+poetry run pytest
+```
+
+Frontend (from `frontend/`):
+
+```bash
+npm run test
+```
+
+CI (`.github/workflows/ci.yml`) runs both suites plus `lint`/`build` on every PR to `main` and every push to `main` — see the badge at the top of this file.
+
 ## 📝 API Endpoints
 
 - **GET /**: Health check.
 - **POST /auth/token**: Login and get JWT token.
-- **POST /chat**: Send a message and get a RAG-based response (Protected).
+- **POST /chat**: Protected. Streams the graph's execution as Server-Sent Events — a `step` event per pipeline stage (retrieving, grading, generating, verifying), then a final `done` event with the answer, or an `error` event on failure. Not a single JSON response.
 - **POST /ingest**: Ingest raw text (Admin only).
 - **POST /ingest/file**: Upload and ingest a file (Admin only).
 
